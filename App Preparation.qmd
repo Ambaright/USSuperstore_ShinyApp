@@ -1,0 +1,214 @@
+---
+title: "App Preparation"
+format: html
+editor: visual
+---
+
+# The Data
+
+For this project, I'll be using the [US Superstore data](https://www.kaggle.com/datasets/juhi1994/superstore?resource=download) which provides data on various orders on an e-commerce platform, and can be used to investigate shipping information, customer location, product information like product name, category, and sales price.
+
+```{r}
+library(tidyverse)
+library(readxl)
+store_data <- read_excel("US Superstore data.xls")
+store_data
+
+str(store_data)
+```
+
+Look at missingness in the data.
+
+```{r}
+sum_na <- function(col){
+  sum(is.na(col))
+}
+store_data |>
+  summarize(across(everything(), sum_na))
+```
+
+No missing values!
+
+# EDA for the App
+
+For our app, we need to create numerical and graphical summaries to investigate the data.
+
+## Contingency Tables
+
+First is a one-way contingency table that shows that the majority of products are office supplies.
+
+```{r}
+table("Product category" = store_data$Category)
+```
+
+We could also break down the product's into their sub-cateogry.
+
+```{r}
+table(store_data$`Sub-Category`)
+```
+
+This two-way table is just to explore what sub-categories make up the main categories.
+- Furniture: Bookcases, Chairs, Tables
+- Office Supplies: Appliances, Art, Binders, Envelopes, Fasteners, Labels, Paper, Storage, Supplies
+- Technology: Accessories, Copiers, Machines, Phones
+
+
+```{r}
+table(store_data$Category, store_data$`Sub-Category`)
+```
+
+Now we may want to investiage the distribution of product categories across Segment (section, or type of customer, from where the order is placed).
+
+```{r}
+table("Product cateogry" = store_data$Category, "Segment" = store_data$Segment)
+```
+
+Or we can see this by the sub-cateogories
+
+```{r}
+table("Product sub-category" = store_data$`Sub-Category`, "Segment" = store_data$Segment)
+```
+
+We also might want to see the distribution of order region.
+
+```{r}
+table("Region" = store_data$Region)
+```
+
+We can then investigate how the distribution of product categories differ among the regions.
+
+```{r}
+table("Product category" = store_data$Category, "Region" = store_data$Region)
+```
+
+And we can expand this investigation to the sub-categories across the regions.
+
+```{r}
+table("Product sub-category" = store_data$`Sub-Category`, "Region" = store_data$Region)
+```
+
+
+
+## Numerical Summaries
+
+Now we can investigate some numerical summaries for quantitative variables at levels of cateogrical variables
+
+We may want to investigate the selling price of each product across the cateogires.
+
+```{r}
+store_data |>
+  group_by(Category) |>
+  summarize(mean_Price = round(mean(Sales),2), med_Price = round(median(Sales),2), sd_Price = round(sd(Sales),2), IQR_Price = round(IQR(Sales),2), min_Price = round(min(Sales),2), max_Price = round(max(Sales),2))
+```
+
+However, if we want to get more specific based on sub-categories we have.
+
+```{r}
+store_data |>
+  group_by(`Sub-Category`) |>
+  summarize(mean_Price = round(mean(Sales),2), med_Price = round(median(Sales),2), sd_Price = round(sd(Sales),2), IQR_Price = round(IQR(Sales),2), min_Price = round(min(Sales),2), max_Price = round(max(Sales),2))
+```
+
+Another important aspect in sales is profit, so we may want to investigate what category has the best and worst profit.
+
+```{r}
+store_data |>
+  group_by(Category) |>
+  summarize(mean_Profit = round(mean(Profit),2), med_Profit = round(median(Profit),2), sd_Profit = round(sd(Profit),2), IQR_Profit = round(IQR(Profit),2), min_Profit = round(min(Profit),2), max_Profit = round(max(Profit),2))
+```
+
+We can also do this based on sub-category.
+
+```{r}
+store_data |>
+  group_by(`Sub-Category`) |>
+  summarize(mean_Profit = round(mean(Profit),2), med_Profit = round(median(Profit),2), sd_Profit = round(sd(Profit),2), IQR_Profit = round(IQR(Profit),2), min_Profit = round(min(Profit),2), max_Profit = round(max(Profit),2))
+```
+
+
+Now do the sales price and profit change for different regions or segments?
+
+We see from this table that products are on average more expensive in the South.
+
+```{r}
+store_data |>
+  group_by(Region) |>
+  summarize(mean_Price = round(mean(Sales),2), med_Price = round(median(Sales),2), sd_Price = round(sd(Sales),2), IQR_Price = round(IQR(Sales),2), min_Price = round(min(Sales),2), max_Price = round(max(Sales),2))
+```
+
+And products are on average more expensive for home office clients.
+
+```{r}
+store_data |>
+  group_by(Segment) |>
+  summarize(mean_Price = round(mean(Sales),2), med_Price = round(median(Sales),2), sd_Price = round(sd(Sales),2), IQR_Price = round(IQR(Sales),2), min_Price = round(min(Sales),2), max_Price = round(max(Sales),2))
+```
+
+
+We see from this table that on average there is more profit in the west.
+
+```{r}
+store_data |>
+  group_by(Region) |>
+  summarize(mean_Profit = round(mean(Profit),2), med_Profit = round(median(Profit),2), sd_Profit = round(sd(Profit),2), IQR_Profit = round(IQR(Profit),2), min_Profit = round(min(Profit),2), max_Profit = round(max(Profit),2))
+```
+
+And there's more profit in the home office segment.
+
+```{r}
+store_data |>
+  group_by(Segment) |>
+  summarize(mean_Profit = round(mean(Profit),2), med_Profit = round(median(Profit),2), sd_Profit = round(sd(Profit),2), IQR_Profit = round(IQR(Profit),2), min_Profit = round(min(Profit),2), max_Profit = round(max(Profit),2))
+```
+
+Now do the sales price and profit of the product categories change across different regions and segments?
+
+From this table we see that technology is more expensive on average in the South compared to other areas.
+
+```{r}
+store_data |>
+  group_by(Region, Category) |>
+  summarize(mean_Price = round(mean(Sales),2), med_Price = round(median(Sales),2), sd_Price = round(sd(Sales),2), IQR_Price = round(IQR(Sales),2), min_Price = round(min(Sales),2), max_Price = round(max(Sales),2))
+```
+
+We can see from this table how different product categories have more or less profit in different regions. For example there is on average a loss of 5.97 in profit on furniture in the central region compared to an average furniture profit of 20.09 for the South.
+
+```{r}
+store_data |>
+  group_by(Region, Category) |>
+  summarize(mean_Profit = round(mean(Profit),2), med_Profit = round(median(Profit),2), sd_Profit = round(sd(Profit),2), IQR_Profit = round(IQR(Profit),2), min_Profit = round(min(Profit),2), max_Profit = round(max(Profit),2))
+```
+
+Now we can compare sales price among different categories and segments. Technology is most expensive for those who purchase as a home office client.
+
+```{r}
+store_data |>
+  group_by(Segment, Category) |>
+  summarize(mean_Price = round(mean(Sales),2), med_Price = round(median(Sales),2), sd_Price = round(sd(Sales),2), IQR_Price = round(IQR(Sales),2), min_Price = round(min(Sales),2), max_Price = round(max(Sales),2))
+```
+
+From this table, we can see that across the categories, the consumer client will lead to less profit being made on average, whereas the home office client will yield the highest profit across technology and office supplies.
+
+```{r}
+store_data |>
+  group_by(Segment, Category) |>
+  summarize(mean_Profit = round(mean(Profit),2), med_Profit = round(median(Profit),2), sd_Profit = round(sd(Profit),2), IQR_Profit = round(IQR(Profit),2), min_Profit = round(min(Profit),2), max_Profit = round(max(Profit),2))
+```
+
+
+What if we wanted to see how the sales price and profit differed among the various sub-categories, regions, and segments.
+
+```{r}
+store_data |>
+  group_by(Region, `Sub-Category`) |>
+  summarize(mean_Profit = round(mean(Profit),2), med_Profit = round(median(Profit),2), sd_Profit = round(sd(Profit),2), IQR_Profit = round(IQR(Profit),2), min_Profit = round(min(Profit),2), max_Profit = round(max(Profit),2))
+```
+
+
+```{r}
+store_data |>
+  group_by(Segment, `Sub-Category`) |>
+  summarize(mean_Profit = round(mean(Profit),2), med_Profit = round(median(Profit),2), sd_Profit = round(sd(Profit),2), IQR_Profit = round(IQR(Profit),2), min_Profit = round(min(Profit),2), max_Profit = round(max(Profit),2))
+```
+
+
