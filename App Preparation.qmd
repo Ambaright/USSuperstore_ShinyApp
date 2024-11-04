@@ -217,9 +217,9 @@ store_data |>
 
 For this section we need to create at least 6 plots.
 
-Our first plot can be a side-by-side barplot that compares two categorical variables. For example, we can do it for the Region and Segment variables.
+Our first plot can be a side-by-side barplot that compares two categorical variables. For example, we can do it for the Region and Segment variables, across the different product categories.
 
-We see that among all of the segments, the west region had the highest count of products sold and the south had the lowest count of products solds.
+We see that among all of the segments and categories, the west region had the highest count of products sold and the south had the lowest count of products sold.
 
 ```{r}
 side_by_side <- ggplot(data = store_data, aes(x = Region, fill = Segment)) +
@@ -261,4 +261,31 @@ scatter <- ggplot(store_data, aes(x = Profit, y = Sales, color = Category)) +
   scale_fill_discrete("Product Category")
 scatter
 ```
+
+Now we can try two plots we did not cover in class.
+
+The first is a geofacet graph to identify discounts for different Segments across the different states.
+
+```{r}
+library(geofacet)
+
+geo_facet <- ggplot(store_data, aes(x = Discount, y = Segment, fill = Segment)) +
+  geom_col() +
+  coord_flip() +
+  facet_geo(~ State, grid = "us_state_grid2") +
+  theme_bw()
+geo_facet
+```
+
+
+```{r}
+pie <- ggplot(data = store_data, aes(x = "", y = Discount, fill = `Sub-Category`)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  theme_void()
+pie
+```
+
+
+
 
