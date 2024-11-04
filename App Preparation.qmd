@@ -11,6 +11,8 @@ For this project, I'll be using the [US Superstore data](https://www.kaggle.com/
 ```{r}
 library(tidyverse)
 library(readxl)
+library(ggplot2)
+
 store_data <- read_excel("US Superstore data.xls")
 store_data
 
@@ -211,4 +213,52 @@ store_data |>
   summarize(mean_Profit = round(mean(Profit),2), med_Profit = round(median(Profit),2), sd_Profit = round(sd(Profit),2), IQR_Profit = round(IQR(Profit),2), min_Profit = round(min(Profit),2), max_Profit = round(max(Profit),2))
 ```
 
+## Graph Making
+
+For this section we need to create at least 6 plots.
+
+Our first plot can be a side-by-side barplot that compares two categorical variables. For example, we can do it for the Region and Segment variables.
+
+We see that among all of the segments, the west region had the highest count of products sold and the south had the lowest count of products solds.
+
+```{r}
+side_by_side <- ggplot(data = store_data, aes(x = Region, fill = Segment)) +
+  geom_bar(position = "dodge") +
+  facet_wrap(~ Category) +
+  labs(x = "Client Region", y = "Count of Products", title = "Count of Products by Category, Client Region & Segment") +
+  scale_fill_discrete("Client Segment")
+side_by_side
+```
+
+Next we can look at a historgram of discounts available on each category.
+
+```{r}
+hist <- ggplot(data = store_data, aes(x = Discount, ..scaled..)) +
+  geom_density(alpha = 0.5, aes(fill = Category)) +
+  labs(x = "Discount Available", y = "Density", title = "Distribution of Discount Available Across Product Category") +
+  scale_fill_discrete("Product Category")
+hist
+```
+
+
+Next we can take a look at a box-plot of the discounts available on each category.
+
+```{r}
+box <- ggplot(data = store_data, aes(x = Category, y = Profit, fill = Category)) +
+  geom_boxplot() +
+  labs(x = "Product Category", y = "Product Profit", title = "Products Profit by Category") +
+  scale_fill_discrete("Product Category")
+box
+```
+
+Now we can look at a scatter plot of the sales price and profit for different product categories.
+
+```{r}
+scatter <- ggplot(store_data, aes(x = Profit, y = Sales, color = Category)) +
+  geom_point() +
+  labs(x = "Product Profit (in dollars)", y = "Product Sales (in dollars)",
+         title = "Product Profit and Sales by Category Types") +
+  scale_fill_discrete("Product Category")
+scatter
+```
 
