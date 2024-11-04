@@ -118,7 +118,7 @@ ui <- fluidPage(
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
 
-    #update input boxes so they can't choose the same variable
+    # update input boxes so they can't choose the same variable
     observeEvent(c(input$numeric_one, input$numeric_two), {
       numeric_one <- input$numeric_one
       numeric_two <- input$numeric_two
@@ -129,6 +129,11 @@ server <- function(input, output, session) {
                              "numeric_two",
                              choices = choices)#we'll cover this kind of thing shortly!
       }
+    })
+    
+    # Create a reactive object here to subset data appropriately
+    data <- reactive({
+      store_data
     })
     
     output$distPlot <- renderPlot({
