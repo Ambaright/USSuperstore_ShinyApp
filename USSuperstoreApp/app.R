@@ -4,12 +4,15 @@ library(tidyverse)
 library(readxl)
 library(ggplot2)
 library(geofacet)
+library(DT)
+library(shinyjs)
 
 # Data to work with
 store_data <- read_excel("US Superstore data.xls")
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
+  useShinyjs(),
   
   # Application title
   titlePanel("US Superstore Data"),
@@ -56,11 +59,47 @@ ui <- fluidPage(
     
     # Show a plot of the generated distribution
     mainPanel(
-      # Display categorical error message if fewer than 2 categorical variables were selected
-      textOutput("cat_error_message"),
-      
-      # Display table output
-      DT::DTOutput("data_table")
+      tabsetPanel(
+        
+          # About Tab
+          tabPanel("About",
+                 h3("About this App"),
+                 h4("App Purpose:"),
+                 p("This Shiny application allows the users to filter the US Superstore dataset based on various
+                   categorical and numeric variables. The app allows the users to subset the data interactively 
+                   and view the filtered results through a downloadable data table format or through contingency
+                   tables and graphs."),
+                 h4("Data Description:"),
+                 p("The data used in this app comes from the US Superstore dataset, which includes information on
+                   product purchases for e-commerce platforms, including selling price and profit of products and 
+                   information on the customer and type of product purchased."),
+                 a("See more information about the US Superstore data at: 
+                   https://www.kaggle.com/datasets/juhi1994/superstore?resource=download",
+                   href = "https://www.kaggle.com/datasets/juhi1994/superstore?resource=download"),
+                 h4("Sidebar Purpose:"),
+                 p("The purpose of the sidebar is to allow users to select the categories and numeric variables 
+                   that they want to filter the data by. At least two categorical variables must be selected to
+                   be able to filter the data. The 'Subset the data' button allows the user to apply these
+                   selections to subset the data."),
+                 p("In the 'Data Download' tab you can view the subsetted data in a table format and you have 
+                 the option to download the data as a CSV file at the end of the tab. In the 'Data Exploration'
+                   tab, you can obtain numeric and graphical summaries for selected variables."),
+                 img(src = "https://www.google.com/url?sa=i&url=https%3A%2F%2Fseeklogo.com%2Fvector-logo%2F331692%2Fsuperstore&psig=AOvVaw1x6Q2GqSs3ic_fLK9HNy3g&ust=1731002472859000&source=images&cd=vfe&opi=89978449&ved=0CBQQjRxqFwoTCODMnu-kyIkDFQAAAAAdAAAAABAE", height = 100, width = 300)
+        
+          ),
+        
+          # Data Download Tab
+          tabPanel("Data Download",
+                   # Display categorical error message if fewer than 2 categorical variables were selected
+                   textOutput("cat_error_message"),
+                   
+                   # Display table output
+                   DT::DTOutput("data_table"),
+                   
+                   # Download Button
+                   downloadButton("download_data", "Download Data")
+          )
+      )
     )
   )
 )
@@ -130,7 +169,7 @@ server <- function(input, output, session) {
     
     # Filter by selected categorical variables
     selected_cat_vars <- input$categorical_vars
-    always_keep_vars <- c("Row ID", "Order ID", "Order Date", "Ship Date", "Customer ID", "Customer Name", 
+    always_keep_vars <- c("Order ID", "Order Date", "Ship Date", "Customer ID", "Customer Name", 
                           "Product ID", "Product Name")
     data <- data |> select(all_of(c(always_keep_vars, selected_cat_vars, numeric_var1, numeric_var2))) |>
                     mutate(
@@ -177,6 +216,18 @@ server <- function(input, output, session) {
       data
     })
   })
+  
+  # Data Download functionality
+  output$download_data <- downloadHandler(
+    filename <- function() {
+      paste("superstore_data_subset.csv")
+    },
+    content = function(file) {
+      data <- filtered_data()
+      if(is.null(data)) return(NULL)
+      write.csv(data, file, row.names = FALSE)
+    }
+  )
   
 }
 
