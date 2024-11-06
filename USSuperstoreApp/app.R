@@ -56,6 +56,10 @@ ui <- fluidPage(
     
     # Show a plot of the generated distribution
     mainPanel(
+      # Display categorical error message if fewer than 2 categorical variables were selected
+      textOutput("cat_error_message"),
+      
+      # Display table output
       DT::DTOutput("data_table")
     )
   )
@@ -106,6 +110,12 @@ server <- function(input, output, session) {
   
   # Create a reactive object here to subset data appropriately
   filtered_data <- eventReactive(input$subset, {
+    
+    # Check that at least two categorical variables are selected
+    if(length(input$categorical_vars) < 2) {
+      return(NULL)
+    }
+    
     data <- store_data
     
     # Filter by selected numeric variables with their slider ranges
@@ -133,6 +143,23 @@ server <- function(input, output, session) {
     data
   })
   
+  # Disable Subset Action Button if fewer than 2 categorical variables
+  observe({
+    if(length(input$categorical_vars) < 2) {
+      shinyjs::disable("subset")
+    } else {
+      shinyjs::enable("subset")
+    }
+  })
+  
+  # Display error message if fewer than 2 categorical variables were selected
+  output$cat_error_message <- renderText({
+    if(length(input$categorical_vars) < 2) {
+      return("You must select at least two categorical variables!")
+    }
+    return(NULL)
+  })
+  
   
   # Display filtered data
   observeEvent(input$subset, {
@@ -140,7 +167,14 @@ server <- function(input, output, session) {
       # Only update if the "Subset the data" button is clicked
       req(input$subset)
       
-      print(filtered_data())
+      data <- filtered_data()
+      
+      # If the data is NULL bc there are less than 2 categorical variables, show no table
+      if(is.null(data)) {
+        return(NULL)
+      }
+      
+      data
     })
   })
   
