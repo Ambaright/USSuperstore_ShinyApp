@@ -29,6 +29,8 @@ ui <- fluidPage(
                          selected = c("Segment", "Region")
       ),
       
+      uiOutput("level_selection"),
+      
       # Conditional UI for displaying the options to filter by the selected
       # Selecting Numeric variable 1
       selectInput("numeric_one", 
@@ -81,6 +83,8 @@ ui <- fluidPage(
                    that they want to filter the data by. At least two categorical variables must be selected to
                    be able to filter the data. The 'Subset the data' button allows the user to apply these
                    selections to subset the data."),
+                 p("Note: When using this app, it's important to push the subset button anytime you decide to 
+                   change the variables selected on the app's side panel."),
                  p("In the 'Data Download' tab you can view the subsetted data in a table format and you have 
                  the option to download the data as a CSV file at the end of the tab. In the 'Data Exploration'
                    tab, you can obtain numeric and graphical summaries for selected variables."),
@@ -120,7 +124,16 @@ ui <- fluidPage(
                            selectInput("cat_summary_var",
                                        "Select Categorical Variable(s) for Summary:",
                                        choices = NULL, multiple = TRUE),
-                           shinycssloaders::withSpinner(DTOutput("categorical_summary_table")))
+                           shinycssloaders::withSpinner(DTOutput("categorical_summary_table"))
+                  ),
+                  # Graphical Summary Tab
+                  tabPanel("Graphs",
+                           selectInput("graph_type",
+                                       "Select Graph Type:",
+                                       choices = c("Side-by-Side Bar Plot", "Density Curve", "Boxplot",
+                                                   "Scatterplot", "Geofacet", "Pie Chart")),
+                            shinycssloaders::withSpinner(uiOutput("graph_output"))
+                  )
               )
           )
       )
@@ -130,6 +143,20 @@ ui <- fluidPage(
 
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
+  
+  # Dynamically generate UI for Level selection based on categorical variables
+  observe({
+    selected_vars <- input$categorical_vars
+    output$level_selection <- renderUI({{
+      lapply(selected_vars, function(var){
+        levels <- unique(store_data[[var]])
+        checkboxGroupInput(paste0("levels_", var),
+                           label = paste("Select levels for", var),
+                           choices = levels,
+                           selected = levels)
+      })
+    }})
+  })
   
   # Reactive expression to get selected ranges for sliders
   observe({
@@ -193,9 +220,16 @@ server <- function(input, output, session) {
     
     # Filter by selected categorical variables
     selected_cat_vars <- input$categorical_vars
+    for (var in selected_cat_vars) {
+      selected_levels <- input[[paste0("levels_", var)]]
+      if(!is.null(selected_levels)) {
+        data <- data |> filter(get(var) %in% selected_levels)
+      }
+    }
     always_keep_vars <- c("Order ID", "Order Date", "Ship Date", "Customer ID", "Customer Name", 
                           "Product ID", "Product Name")
-    data <- data |> select(all_of(c(always_keep_vars, selected_cat_vars, numeric_var1, numeric_var2))) |>
+    selected_columns <- c(always_keep_vars, selected_cat_vars, numeric_var1, numeric_var2)
+    data <- data |> select(all_of(selected_columns)) |>
                     mutate(
                       !!numeric_var1 := round(get(numeric_var1), 3),
                       !!numeric_var2 := round(get(numeric_var2), 3)
@@ -337,6 +371,45 @@ server <- function(input, output, session) {
       write.csv(data, file, row.names = FALSE)
     }
   )
+  
+  # Graph output depending on selected graph type
+  output$graph_output <- renderUI({
+    req(input$subset)
+    data <- filtered_data()
+    
+    if(input$graph_type == "Side-by-Side Bar Plot") {
+      # Check that at least 2 categorical variables are selected
+      if(length(input$categorical_vars) < 2) {
+        return("Please select at least two categorical variables for the Side-by-Side Bar Plot")
+      } else if(length(input$categorical_vars) == 2) {
+        return(plotOutput("side_by_side_bar"))
+      } else if(length(input$categorical_vars) == 3) {
+        return(plotOutput("side_by_side_facet"))
+      }
+    } 
+  })
+  
+  # Render specific plots based on selected graph type
+  output$side_by_side_bar <- renderPlot({
+    ggplot(filtered_data(), aes(x = get(input$categorical_vars[1]), fill = get(input$categorical_vars[2]))) +
+      geom_bar(position = "dodge") +
+      labs(title = "Side-by-Side Bar Chart",
+           x = input$categorical_vars[1],
+           y = "Count",
+           fill = input$categorical_vars[2]
+           )
+  })
+  
+  output$side_by_side_facet <- renderPlot({
+    ggplot(filtered_data(), aes(x = get(input$categorical_vars[1]), fill = get(input$categorical_vars[2]))) +
+      geom_bar(position = "dodge") +
+      facet_wrap(~ get(input$categorical_vars[3])) +
+      labs(title = "Side-by-Side Faceted Bar Chart",
+           x = input$categorical_vars[1],
+           y = "Count",
+           fill = input$categorical_vars[2]
+           )
+  })
   
 }
 
