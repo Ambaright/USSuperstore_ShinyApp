@@ -49,20 +49,13 @@ ui <- fluidPage(
       
       # Action button that when pressed, subsets the data according to the selections made on the sidebar
       actionButton("subset",
-                   "Subset the data"),
+                   "Subset the data")
       
-      #Delete later
-      sliderInput("bins",
-                  "Number of bins:",
-                  min = 1,
-                  max = 50,
-                  value = 30)
       
     ),
     
     # Show a plot of the generated distribution
     mainPanel(
-      plotOutput("distPlot"),
       DT::DTOutput("data_table")
     )
   )
@@ -112,33 +105,8 @@ server <- function(input, output, session) {
   })
   
   # Create a reactive object here to subset data appropriately
-  filtered_data <- reactive({
+  filtered_data <- eventReactive(input$subset, {
     data <- store_data
-    
-    # Filter by selected categorical variables
-    if("Ship Mode" %in% input$categorical_vars) {
-      data <- data |> select('Ship Mode', everything())
-    }
-    
-    if("Segment" %in% input$categorical_vars) {
-      data <- data |> select(Segment, everything())
-    }
-    
-    if("State" %in% input$categorical_vars) {
-      data <- data |> select(State, everything())
-    }
-    
-    if("Region" %in% input$categorical_vars) {
-      data <- data |> select(Region, everything())
-    }
-    
-    if("Category" %in% input$categorical_vars) {
-      data <- data |> select(Category, everything())
-    }
-    
-    if("Sub-Category" %in% input$categorical_vars) {
-      data <- data |> select('Sub-Category')
-    }
     
     # Filter by selected numeric variables with their slider ranges
     
@@ -150,29 +118,32 @@ server <- function(input, output, session) {
     range_var2 <- input$sliderTwo_values
     data <- data |> filter(get(numeric_var2) >= range_var2[1] & get(numeric_var2) <= range_var2[2])
     
+    # Filter by selected categorical variables
+    selected_cat_vars <- input$categorical_vars
+    always_keep_vars <- c("Row ID", "Order ID", "Order Date", "Ship Date", "Customer ID", "Customer Name", 
+                          "Product ID", "Product Name")
+    data <- data |> select(all_of(c(always_keep_vars, selected_cat_vars, numeric_var1, numeric_var2))) |>
+                    mutate(
+                      !!numeric_var1 := round(get(numeric_var1), 3),
+                      !!numeric_var2 := round(get(numeric_var2), 3)
+                    )
+                    
+    
     # Return filtered data
     data
   })
   
   
-  output$distPlot <- renderPlot({
-    # generate bins based on input$bins from ui.R
-    x    <- faithful[, 2]
-    bins <- seq(min(x), max(x), length.out = input$bins + 1)
-    
-    # draw the histogram with the specified number of bins
-    hist(x, breaks = bins, col = 'darkgray', border = 'white',
-         xlab = 'Waiting time to next eruption (in mins)',
-         main = 'Histogram of waiting times')
+  # Display filtered data
+  observeEvent(input$subset, {
+    output$data_table <- DT::renderDataTable({
+      # Only update if the "Subset the data" button is clicked
+      req(input$subset)
+      
+      print(filtered_data())
+    })
   })
   
-  # Display filtered data
-  output$data_table <- DT::renderDataTable({
-    # Only update if the "Subset the data" button is clicked
-    req(input$subset)
-    
-    print(filtered_data())
-  })
 }
 
 # Run the application 
