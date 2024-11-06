@@ -112,7 +112,15 @@ ui <- fluidPage(
                                        choices = NULL),
                            uiOutput("group_by_var"),
                            shinycssloaders::withSpinner(DTOutput("numeric_summary_table"))
-                  )
+                  ),
+                  # Categorical Summary Tab
+                  tabPanel("Categorical Summaries",
+                           # Display categorical error message if fewer than 2 categorical variables were selected
+                           textOutput("cat_error_message"),
+                           selectInput("cat_summary_var",
+                                       "Select Categorical Variable(s) for Summary:",
+                                       choices = NULL, multiple = TRUE),
+                           shinycssloaders::withSpinner(DTOutput("categorical_summary_table")))
               )
           )
       )
@@ -196,6 +204,36 @@ server <- function(input, output, session) {
     
     # Return filtered data
     data
+  })
+  
+  # Dynamically update choices for categorical summary based on selected categorical variables
+  observe({
+    updateSelectInput(session, "cat_summary_var", choices = input$categorical_vars, selected = input$categorical_vars[1])
+  })
+  
+  # Render contingency table
+  output$categorical_summary_table <- renderDT({
+    req(input$cat_summary_var)
+    
+    # Get selected categorical variables
+    selected_vars <- input$cat_summary_var
+    
+    # Generate contingency table based on the number of selected variables
+    if(length(selected_vars) == 1) {
+      table_data <- table(filtered_data()[[selected_vars]])
+      table_df <- as.data.frame(table_data)
+      colnames(table_df) <- c(selected_vars, "Count")
+      
+    } else if(length(selected_vars) == 2) {
+      table_data <- table(filtered_data()[[selected_vars[1]]], filtered_data()[[selected_vars[2]]])
+      table_df <- as.data.frame(table_data)
+      colnames(table_df) <- c(selected_vars[1], selected_vars[2], "Count")
+      
+    } else {
+      return(NULL)
+    }
+    
+    table_df
   })
   
   # Dynamically update choices for group_by input based on selected categorical variables
