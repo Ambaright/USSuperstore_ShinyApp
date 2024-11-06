@@ -130,7 +130,7 @@ ui <- fluidPage(
                   tabPanel("Graphs",
                            selectInput("graph_type",
                                        "Select Graph Type:",
-                                       choices = c("Side-by-Side Bar Plot", "Density Curve", "Boxplot",
+                                       choices = c("Side-by-Side Bar Plot", "Density Plot", "Boxplot",
                                                    "Scatterplot", "Geofacet", "Pie Chart")),
                             shinycssloaders::withSpinner(uiOutput("graph_output"))
                   )
@@ -386,7 +386,38 @@ server <- function(input, output, session) {
       } else if(length(input$categorical_vars) == 3) {
         return(plotOutput("side_by_side_facet"))
       }
-    } 
+      
+    } else if(input$graph_type == "Density Plot") {
+      if(length(input$categorical_vars) < 1 || length(input$numeric_one) < 1) {
+        return("Please select one numeric and one categorical variable for the Density Plot")
+      } 
+      return(plotOutput("density_plot"))
+      
+    } else if(input$graph_type == "Boxplot") {
+      if(length(input$categorical_vars) < 1 || length(input$numeric_one) <1) {
+        return("Please select one numeric and one categorical variable for the Boxplot")
+      }
+      return(plotOutput("boxplot"))
+    
+    } else if(input$graph_type == "Scatterplot") {
+      if(length(input$numeric_one) < 1 || length(input$numeric_two) < 1) {
+        return("Please select two numeric variables for the Scatterplot")
+      }
+      return(plotOutput("scatterplot"))
+      
+    } else if(input$graph_type == "Geofacet") {
+      if("State" %in% input$categorical_vars && length(input$numeric_var1) >= 1) {
+        return(plotOutput("geofacet"))
+      } else {
+        return("Please select 'State' as a categorical variable along with one numeric variable for Geofacet")
+      }
+      
+    } else if(input$graph_type == "Pie Chart") {
+      if(length(input$categorical_vars) < 1 || length(input$numeric_one) < 1) {
+        return("Please select one categorical and one numeric variable for the Pie Chart")
+      }
+      return(plotOutput("pie_chart"))
+    }
   })
   
   # Render specific plots based on selected graph type
@@ -409,6 +440,50 @@ server <- function(input, output, session) {
            y = "Count",
            fill = input$categorical_vars[2]
            )
+  })
+  
+  output$density_plot <- renderPlot({
+    ggplot(data = filtered_data(), aes(x = get(input$numeric_one), ..scaled..)) +
+      geom_density(alpha = 0.5, aes(fill = get(input$categorical_vars[1]))) +
+      labs(x = input$numeric_one, 
+           y = "Density", 
+           title = "Density Plot") +
+      scale_fill_discrete(input$categorical_vars[1])
+  })
+  
+  output$boxplot <- renderPlot({
+    ggplot(filtered_data(), aes(x = get(input$categorical_vars[1]), y = get(input$numeric_one), 
+                                fill = get(input$categorical_vars[1]))) +
+      geom_boxplot() +
+      labs(x = input$categorical_vars[1], y = input$numeric_one, title = "Boxplot") +
+      scale_fill_discrete(get(input$categorical_vars[1]))
+  })
+  
+  output$scatterplot <- renderPlot({
+    ggplot(filtered_data(), aes(x = get(input$numeric_one), y = get(input$numeric_two), 
+                                color = get(input$categorical_vars[1]))) +
+      geom_point() +
+      labs(x = input$numeric_one, 
+           y = input$numeric_two,
+           title = "Scatterplot") +
+      scale_color_discrete(input$categorical_vars[1])
+  })
+  
+  output$geofacet <- renderPlot({
+    ggplot(filtered_data(), aes(x = get(input$numeric_one), y = get(input$categorical_vars[1]), 
+                                fill = get(input$categorical_vars[1]))) +
+      geom_col() +
+      coord_flip() +
+      facet_geo(~ State, grid = "us_state_grid2") +
+      theme_bw()
+  })
+  
+  output$pie_chart <- renderPlot({
+    ggplot(filtered_data(), aes(x = "", y = get(input$numeric_one), fill = get(input$categorical_vars[1]))) +
+      geom_bar(stat = "identity", width = 1) +
+      coord_polar("y", start = 0) +
+      theme_void() +
+      scale_fill_discrete(input$categorical_vars[1])
   })
   
 }
