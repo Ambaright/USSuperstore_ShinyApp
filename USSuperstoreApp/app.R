@@ -98,6 +98,22 @@ ui <- fluidPage(
                    
                    # Download Button
                    downloadButton("download_data", "Download Data")
+          ),
+          
+          # Data Exploration Tab
+          tabPanel("Data Exploration",
+              tabsetPanel(
+                  # Numeric Summary Tab
+                  tabPanel("Numeric Summaries",
+                           # Display categorical error message if fewer than 2 categorical variables were selected
+                           textOutput("cat_error_message"),
+                           selectInput("num_summary_var",
+                                       "Select Numeric Variable for Summary:",
+                                       choices = NULL),
+                           uiOutput("group_by_var"),
+                           shinycssloaders::withSpinner(DTOutput("numeric_summary_table"))
+                  )
+              )
           )
       )
     )
@@ -180,6 +196,61 @@ server <- function(input, output, session) {
     
     # Return filtered data
     data
+  })
+  
+  # Dynamically update choices for group_by input based on selected categorical variables
+  observeEvent(input$subset, {
+    filtered_data_cols <- colnames(filtered_data())
+    
+    categorical_in_data <- intersect(filtered_data_cols, c("Ship Mode", "Segment", "State", 
+                                                           "Region", "Category", "Sub-Category"))
+    
+    updateSelectInput(session, "group_by", choices = categorical_in_data)
+    
+  })
+
+  # Dynamic UI for selecting a categorical variable to group by
+  output$group_by_var <- renderUI({
+    req(input$num_summary_var)
+    
+    # Only show categorical variables that are selected in the sidebar
+    selectInput("group_by", "Group by Categorical Variable:",
+                choices = input$categorical_vars,
+                selected = input$categorical_vars[1])
+  })
+  
+  # Dynamically update choices for numeric variable summary
+  observe({
+    numeric_choices <- c(input$numeric_one, input$numeric_two)
+    updateSelectInput(session,  "num_summary_var", choices = numeric_choices)
+  })
+  
+  # Data Summaries: Numeric Variable Summaries (Mean, Median, SD, Max, Min)
+  output$numeric_summary_table <- renderDT({
+    req(input$num_summary_var, input$group_by)
+    
+    num_var <- input$num_summary_var
+    cat_var <- input$group_by
+    
+    summary_data <- filtered_data()
+    
+    if(is.null(summary_data)) {
+      return(NULL)
+    }
+    
+    summary_stats <- summary_data |>
+      group_by_at(cat_var) |>
+      summarize(
+        Mean = round(mean(get(num_var)),2),
+        Median = round(median(get(num_var)),2),
+        SD = round(sd(get(num_var)),2),
+        IQR = round(IQR(get(num_var)),2),
+        Min = round(min(get(num_var)),2),
+        Max = round(max(get(num_var)),2)
+      )
+    
+    summary_stats
+        
   })
   
   # Disable Subset Action Button if fewer than 2 categorical variables
