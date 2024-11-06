@@ -19,12 +19,14 @@ ui <- fluidPage(
     sidebarPanel(
       h2("Select Variables to Investigate"),
       # Categorical variables
-      checkboxGroupInput("categorical",
+      checkboxGroupInput("categorical_vars",
                          "Categorical Variables",
-                         choices = c("Ship Mode", "Customer Name", "Segment", "City", "State", 
+                         choices = c("Ship Mode", "Segment", "State", 
                                      "Region", "Category", "Sub-Category"),
                          selected = c("Segment", "Region")
       ),
+      
+      # Conditional UI for displaying the options to filter by the selected
       # Selecting Numeric variable 1
       selectInput("numeric_one", 
                   "First Numeric Variable",
@@ -46,7 +48,7 @@ ui <- fluidPage(
       uiOutput("sliderTwo"),
       
       # Action button that when pressed, subsets the data according to the selections made on the sidebar
-      actionButton("subset_true",
+      actionButton("subset",
                    "Subset the data"),
       
       #Delete later
@@ -60,7 +62,8 @@ ui <- fluidPage(
     
     # Show a plot of the generated distribution
     mainPanel(
-      plotOutput("distPlot")
+      plotOutput("distPlot"),
+      DT::DTOutput("data_table")
     )
   )
 )
@@ -109,9 +112,48 @@ server <- function(input, output, session) {
   })
   
   # Create a reactive object here to subset data appropriately
-  data <- reactive({
-    store_data
+  filtered_data <- reactive({
+    data <- store_data
+    
+    # Filter by selected categorical variables
+    if("Ship Mode" %in% input$categorical_vars) {
+      data <- data |> select('Ship Mode', everything())
+    }
+    
+    if("Segment" %in% input$categorical_vars) {
+      data <- data |> select(Segment, everything())
+    }
+    
+    if("State" %in% input$categorical_vars) {
+      data <- data |> select(State, everything())
+    }
+    
+    if("Region" %in% input$categorical_vars) {
+      data <- data |> select(Region, everything())
+    }
+    
+    if("Category" %in% input$categorical_vars) {
+      data <- data |> select(Category, everything())
+    }
+    
+    if("Sub-Category" %in% input$categorical_vars) {
+      data <- data |> select('Sub-Category')
+    }
+    
+    # Filter by selected numeric variables with their slider ranges
+    
+    numeric_var1 <- input$numeric_one
+    range_var1 <- input$sliderOne_values
+    data <- data |> filter(get(numeric_var1) >= range_var1[1] & get(numeric_var1) <= range_var1[2])
+    
+    numeric_var2 <- input$numeric_two
+    range_var2 <- input$sliderTwo_values
+    data <- data |> filter(get(numeric_var2) >= range_var2[1] & get(numeric_var2) <= range_var2[2])
+    
+    # Return filtered data
+    data
   })
+  
   
   output$distPlot <- renderPlot({
     # generate bins based on input$bins from ui.R
@@ -122,6 +164,14 @@ server <- function(input, output, session) {
     hist(x, breaks = bins, col = 'darkgray', border = 'white',
          xlab = 'Waiting time to next eruption (in mins)',
          main = 'Histogram of waiting times')
+  })
+  
+  # Display filtered data
+  output$data_table <- DT::renderDataTable({
+    # Only update if the "Subset the data" button is clicked
+    req(input$subset)
+    
+    print(filtered_data())
   })
 }
 
